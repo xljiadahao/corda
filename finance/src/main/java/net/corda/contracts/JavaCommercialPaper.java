@@ -18,7 +18,6 @@ import java.util.stream.*;
 import static kotlin.collections.CollectionsKt.*;
 import static net.corda.core.contracts.ContractsDSL.*;
 
-
 /**
  * This is a Java version of the CommercialPaper contract (chosen because it's simple). This demonstrates how the
  * use of Kotlin for implementation of the framework does not impose the same language choice on contract developers.
@@ -132,25 +131,6 @@ public class JavaCommercialPaper implements Contract {
     }
 
     public interface Clauses {
-        class Group extends GroupClauseVerifier<State, Commands, State> {
-            // This complains because we're passing generic types into a varargs, but it is valid so we suppress the
-            // warning.
-            @SuppressWarnings("unchecked")
-            Group() {
-                super(new AnyComposition<>(
-                        new Clauses.Redeem(),
-                        new Clauses.Move(),
-                        new Clauses.Issue()
-                ));
-            }
-
-            @NotNull
-            @Override
-            public List<InOutGroup<State, State>> groupStates(@NotNull TransactionForContract tx) {
-                return tx.groupStates(State.class, State::withoutOwner);
-            }
-        }
-
         class Move extends Clause<State, Commands, State> {
             @NotNull
             @Override
@@ -283,7 +263,7 @@ public class JavaCommercialPaper implements Contract {
     }
 
     @NotNull
-    private List<AuthenticatedObject<Commands>> extractCommands(@NotNull TransactionForContract tx) {
+    private static List<AuthenticatedObject<Commands>> extractCommands(@NotNull TransactionForContract tx) {
         return tx.getCommands()
                 .stream()
                 .filter((AuthenticatedObject<CommandData> command) -> command.getValue() instanceof Commands)
@@ -291,9 +271,17 @@ public class JavaCommercialPaper implements Contract {
                 .collect(Collectors.toList());
     }
 
+    private static List<TransactionForContract.InOutGroup<State, State>> groupStates(final TransactionForContract tx) {
+        return tx.groupStates(State.class, State::withoutOwner);
+    }
+
     @Override
     public void verify(@NotNull TransactionForContract tx) throws IllegalArgumentException {
-        ClauseVerifier.verifyClause(tx, new Clauses.Group(), extractCommands(tx));
+        ClauseVerifier.verifyClause(tx, new GroupBy<>(new AnyComposition<>(
+                new Clauses.Redeem(),
+                new Clauses.Move(),
+                new Clauses.Issue()
+        ), JavaCommercialPaper::groupStates ), extractCommands(tx));
     }
 
     @NotNull

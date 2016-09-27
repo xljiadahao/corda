@@ -1,10 +1,14 @@
 package net.corda.contracts.asset
 
 import com.google.common.annotations.VisibleForTesting
+import net.corda.core.contracts.clauses.GroupBy
 import net.corda.contracts.asset.Obligation.Lifecycle.NORMAL
 import net.corda.contracts.clause.*
 import net.corda.core.contracts.*
-import net.corda.core.contracts.clauses.*
+import net.corda.core.contracts.clauses.AllComposition
+import net.corda.core.contracts.clauses.Clause
+import net.corda.core.contracts.clauses.FirstComposition
+import net.corda.core.contracts.clauses.verifyClause
 import net.corda.core.crypto.*
 import net.corda.core.random63BitValue
 import net.corda.core.transactions.TransactionBuilder
@@ -43,29 +47,6 @@ class Obligation<P> : Contract {
     override val legalContractReference: SecureHash = SecureHash.sha256("https://www.big-book-of-banking-law.example.gov/cash-settlement.html")
 
     interface Clauses {
-        /**
-         * Parent clause for clauses that operate on grouped states (those which are fungible).
-         */
-        class Group<P> : GroupClauseVerifier<State<P>, Commands, Issued<Terms<P>>>(
-                AllComposition(
-                        NoZeroSizedOutputs<State<P>, Commands, Terms<P>>(),
-                        FirstComposition(
-                                SetLifecycle<P>(),
-                                AllComposition(
-                                        VerifyLifecycle<State<P>, Commands, Issued<Terms<P>>, P>(),
-                                        FirstComposition(
-                                                Settle<P>(),
-                                                Issue(),
-                                                ConserveAmount()
-                                        )
-                                )
-                        )
-                )
-        ) {
-            override fun groupStates(tx: TransactionForContract): List<TransactionForContract.InOutGroup<Obligation.State<P>, Issued<Terms<P>>>>
-                    = tx.groupStates<Obligation.State<P>, Issued<Terms<P>>> { it.amount.token }
-        }
-
         /**
          * Generic issuance clause
          */
@@ -364,9 +345,25 @@ class Obligation<P> : Contract {
         data class Exit<P>(override val amount: Amount<Issued<Terms<P>>>) : Commands, FungibleAsset.Commands.Exit<Terms<P>>
     }
 
+    private val groupedClauses = AllComposition(
+            NoZeroSizedOutputs<State<P>, Commands, Terms<P>>(),
+            FirstComposition(
+                    Clauses.SetLifecycle<P>(),
+                    AllComposition(
+                            Clauses.VerifyLifecycle<State<P>, Commands, Issued<Terms<P>>, P>(),
+                            FirstComposition(
+                                    Clauses.Settle<P>(),
+                                    Clauses.Issue(),
+                                    Clauses.ConserveAmount()
+                            )
+                    )
+            )
+    )
+
     override fun verify(tx: TransactionForContract) = verifyClause<Commands>(tx, FirstComposition<ContractState, Commands, Unit>(
             Clauses.Net<Commands, P>(),
-            Clauses.Group<P>()
+            GroupBy<State<P>, Commands, Issued<Terms<P>>>(
+                    groupedClauses, { groupStates<State<P>, Issued<Terms<P>>> { it.amount.token } })
     ), tx.commands.select<Obligation.Commands>())
 
     /**

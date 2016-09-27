@@ -1,7 +1,11 @@
 package net.corda.irs.contract
 
+import net.corda.core.contracts.clauses.GroupBy
 import net.corda.core.contracts.*
-import net.corda.core.contracts.clauses.*
+import net.corda.core.contracts.clauses.AllComposition
+import net.corda.core.contracts.clauses.AnyComposition
+import net.corda.core.contracts.clauses.Clause
+import net.corda.core.contracts.clauses.verifyClause
 import net.corda.core.crypto.CompositeKey
 import net.corda.core.crypto.Party
 import net.corda.core.crypto.SecureHash
@@ -454,7 +458,17 @@ class InterestRateSwap() : Contract {
                 fixingCalendar, index, indexSource, indexTenor)
     }
 
-    override fun verify(tx: TransactionForContract) = verifyClause(tx, AllComposition(Clauses.Timestamped(), Clauses.Group()), tx.commands.select<Commands>())
+    override fun verify(tx: TransactionForContract) = verifyClause(tx, AllComposition(
+            Clauses.Timestamped(),
+            GroupBy<State, Commands, UniqueIdentifier>(
+                    AnyComposition(
+                            Clauses.Agree(),
+                            Clauses.Fix(),
+                            Clauses.Pay(),
+                            Clauses.Mature()
+                    ),
+                    { tx.groupStates() { state -> state.linearId } })
+    ), tx.commands.select<Commands>())
 
     interface Clauses {
         /**
@@ -500,13 +514,6 @@ class InterestRateSwap() : Contract {
                 return (diff1.keys + diff2.keys).map {
                     it to Pair(diff1[it] as FloatingRatePaymentEvent, diff2[it] as FloatingRatePaymentEvent)
                 }
-            }
-        }
-
-        class Group : GroupClauseVerifier<State, Commands, UniqueIdentifier>(AnyComposition(Agree(), Fix(), Pay(), Mature())) {
-            // Group by Trade ID for in / out states
-            override fun groupStates(tx: TransactionForContract): List<TransactionForContract.InOutGroup<State, UniqueIdentifier>> {
-                return tx.groupStates() { state -> state.linearId }
             }
         }
 
