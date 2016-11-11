@@ -47,7 +47,9 @@ sealed class TransactionType {
     /** A general transaction type where transaction validity is determined by custom contract code */
     class General : TransactionType() {
         /** Just uses the default [TransactionBuilder] with no special logic */
-        class Builder(notary: Party?) : TransactionBuilder(General(), notary) {}
+        class Builder(notary: Party?, options: Set<TransactionBuilder.Option>) : TransactionBuilder(General(), notary, options = options) {
+            constructor(notary: Party?) : this(notary, emptySet())
+        }
 
         /**
          * Check the transaction is contract-valid by running the verify() for each input and output state contract.
