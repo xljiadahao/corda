@@ -4,10 +4,7 @@
 package net.corda.node.services.config
 
 import com.google.common.net.HostAndPort
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
-import com.typesafe.config.ConfigParseOptions
-import com.typesafe.config.ConfigRenderOptions
+import com.typesafe.config.*
 import net.corda.core.copyTo
 import net.corda.core.createDirectories
 import net.corda.core.crypto.X509Utilities
@@ -16,12 +13,14 @@ import net.corda.core.exists
 import net.corda.core.utilities.loggerFor
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
+import java.lang.reflect.WildcardType
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.Instant
 import java.time.LocalDate
+import java.time.temporal.Temporal
 import java.util.*
 import kotlin.reflect.KProperty
 import kotlin.reflect.jvm.javaType
@@ -71,16 +70,24 @@ private fun <T> Config.getValueInternal(path: String, type: Type): T {
         URL::class.java -> URL(getString(path))
         Properties::class.java -> getConfig(path).toProperties()
         is ParameterizedType -> getParameterisedValue<T>(path, type)
-        else -> getConfig(path).toObjectGraph(type as Class<*>)
+        else -> getConfig(path).parseAs(type as Class<*>)
     } as T
 }
 
 @Suppress("UNCHECKED_CAST", "PLATFORM_CLASS_MAPPED_TO_KOTLIN")
 private fun <T> Config.getParameterisedValue(path: String, type: ParameterizedType): T {
     val rawType = type.rawType as Class<*>
-    require(Collection::class.java.isAssignableFrom(rawType)) { "$rawType is not supported" }
-    val argType = type.actualTypeArguments[0] as Class<*>
-    val values: List<Any> = when (argType) {
+    require(rawType == List::class.java || rawType == Set::class.java) { "$rawType is not supported" }
+    val elementType = type.actualTypeArguments[0].run {
+        when (this) {
+            is Class<*> -> this
+            // Oddly this is needed for two of the tests to pass even though they're List<Path> and List<Properties>.
+            // Perhaps this is a bug with the Kotlin compiler.
+            is WildcardType -> upperBounds[0] as Class<*>
+            else -> throw IllegalArgumentException("$this is not supported")
+        }
+    }
+    val values: List<Any> = when (elementType) {
         String::class.java -> getStringList(path)
         java.lang.Integer::class.java -> getIntList(path)
         java.lang.Long::class.java -> getLongList(path)
@@ -92,18 +99,14 @@ private fun <T> Config.getParameterisedValue(path: String, type: ParameterizedTy
         Path::class.java -> getStringList(path).map { Paths.get(it) }
         URL::class.java -> getStringList(path).map(::URL)
         Properties::class.java -> getConfigList(path).map(Config::toProperties)
-        else -> getConfigList(path).map { it.toObjectGraph(argType) }
+        else -> getConfigList(path).map { it.parseAs(elementType) }
     }
-    return when (rawType) {
-        List::class.java -> values
-        Set::class.java -> values.toSet()
-        else -> throw IllegalArgumentException("$rawType is not supported")
-    } as T
+    return (if (rawType == Set::class.java) values.toSet() else values) as T
 }
 
 fun Config.toProperties(): Properties = entrySet().associateByTo(Properties(), { it.key }, { it.value.unwrapped().toString() })
 
-fun <T : Any> Config.toObjectGraph(type: Class<T>): T {
+fun <T : Any> Config.parseAs(type: Class<T>): T {
     val constructor = type.kotlin.primaryConstructor ?: throw IllegalArgumentException("${type.name} has no constructors")
     val args = constructor.parameters
             .filterNot { it.isOptional && !hasPath(it.name!!) }
@@ -115,6 +118,53 @@ fun <T : Any> Config.toObjectGraph(type: Class<T>): T {
                 }
             }
     return constructor.callBy(args)
+}
+
+/**
+ *
+ */
+inline fun <reified T : Any> Config.parseAs(): T = parseAs(T::class.java)
+
+/**
+ *
+ */
+fun Any.toConfig(): Config = ConfigValueFactory.fromMap(toValueMap()).toConfig()
+
+@Suppress("UNCHECKED_CAST", "PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+private fun Any.toValueMap(): Map<String, Any> {
+    val values = HashMap<String, Any>()
+    for (field in javaClass.declaredFields) {
+        field.isAccessible = true
+        val value = field.get(this) ?: continue
+        val configValue = if (value is String || value is Boolean || value is Number) {
+            value
+        } else if (value is Temporal || value is HostAndPort || value is Path || value is URL) {
+            value.toString()
+        } else if (value is Properties) {
+            ConfigFactory.parseMap(value as Map<String, Any>).root()
+        } else if (value is Iterable<*>) {
+            val elementType = (field.genericType as ParameterizedType).actualTypeArguments[0] as Class<*>
+            val iterable = when (elementType) {
+                String::class.java -> value
+                java.lang.Integer::class.java -> value
+                java.lang.Long::class.java -> value
+                java.lang.Double::class.java -> value
+                java.lang.Boolean::class.java -> value
+                LocalDate::class.java -> value.map(Any?::toString)
+                Instant::class.java -> value.map(Any?::toString)
+                HostAndPort::class.java -> value.map(Any?::toString)
+                Path::class.java -> value.map(Any?::toString)
+                URL::class.java -> value.map(Any?::toString)
+                Properties::class.java -> value.map { ConfigFactory.parseMap(it as Map<String, Any>).root() }
+                else -> value.map { it?.toValueMap() }
+            }
+            ConfigValueFactory.fromIterable(iterable)
+        } else {
+            value.toValueMap()
+        }
+        values[field.name] = configValue
+    }
+    return values
 }
 
 /**

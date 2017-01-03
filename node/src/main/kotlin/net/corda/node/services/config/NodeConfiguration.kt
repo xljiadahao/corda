@@ -39,28 +39,47 @@ interface NodeConfiguration : NodeSSLConfiguration {
     val devMode: Boolean
 }
 
-class FullNodeConfiguration(val config: Config) : NodeConfiguration {
-    override val basedir: Path by config
-    override val myLegalName: String by config
-    override val nearestCity: String by config
-    override val emailAddress: String by config
-    override val exportJMXto: String get() = "http"
-    override val keyStorePassword: String by config
-    override val trustStorePassword: String by config
-    override val dataSourceProperties: Properties by config
-    override val devMode: Boolean by config.orElse { false }
-    override val networkMapService: NetworkMapInfo? by config.orElse { null }
-    override val rpcUsers: List<User> by config.orElse { emptyList<User>() }
-    val useHTTPS: Boolean by config
-    val artemisAddress: HostAndPort by config
-    val webAddress: HostAndPort by config
-    val messagingServerAddress: HostAndPort? by config.orElse { null }
-    // TODO Make this Set<ServiceInfo>
-    val extraAdvertisedServiceIds: List<String> by config
-    val useTestClock: Boolean by config.orElse { false }
-    val notaryNodeAddress: HostAndPort? by config.orElse { null }
-    val notaryClusterAddresses: List<HostAndPort> by config.orElse { emptyList<HostAndPort>() }
-
+//class FullNodeConfiguration(override val keyStorePassword: String,
+//                            override val trustStorePassword: String,
+//                            override val basedir: Path,
+//                            override val myLegalName: String,
+//                            override val networkMapService: NetworkMapInfo?,
+//                            override val nearestCity: String,
+//                            override val emailAddress: String,
+//                            override val dataSourceProperties: Properties,
+//                            override val rpcUsers: List<User> = emptyList(),
+//                            override val devMode: Boolean = false,
+//                            val useHTTPS: Boolean,
+//                            val artemisAddress: HostAndPort,
+//                            val webAddress: HostAndPort,
+//                            val messagingServerAddress: HostAndPort? = null,
+//                            // TODO Make this Set<ServiceInfo>
+//                            val extraAdvertisedServiceIds: List<String>,
+//                            val useTestClock: Boolean = false,
+//                            val notaryNodeAddress: HostAndPort? = null,
+//                            val notaryClusterAddresses: List<HostAndPort> = emptyList()) : NodeConfiguration {
+    class FullNodeConfiguration(val config: Config) : NodeConfiguration {
+        override val basedir: Path by config
+        override val myLegalName: String by config
+        override val nearestCity: String by config
+        override val emailAddress: String by config
+        override val exportJMXto: String get() = "http"
+        override val keyStorePassword: String by config
+        override val trustStorePassword: String by config
+        override val dataSourceProperties: Properties by config
+        override val devMode: Boolean by config.orElse { false }
+        override val networkMapService: NetworkMapInfo? by config.orElse { null }
+        override val rpcUsers: List<User> by config.orElse { emptyList<User>() }
+        val useHTTPS: Boolean by config
+        val artemisAddress: HostAndPort by config
+        val webAddress: HostAndPort by config
+        val messagingServerAddress: HostAndPort? by config.orElse { null }
+        // TODO Make this Set<ServiceInfo>
+        val extraAdvertisedServiceIds: List<String> by config
+        val useTestClock: Boolean by config.orElse { false }
+        val notaryNodeAddress: HostAndPort? by config.orElse { null }
+        val notaryClusterAddresses: List<HostAndPort> by config.orElse { emptyList<HostAndPort>() }
+//    override val exportJMXto: String get() = "http"
     init {
         // TODO Move this to AretmisMessagingServer
         rpcUsers.forEach {
