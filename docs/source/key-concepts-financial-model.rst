@@ -27,8 +27,8 @@ Here are some examples:
       Amount<Currency>
       // A quantity of currency that is issued by a specific issuer, for instance central bank vs other bank dollars
       Amount<Issued<Currency>>
-      // A quantity of obligations to deliver currency of any issuer.
-      Amount<Obligation.State<Currency>>
+      // A quantity of a product governed by specific obligation terms
+      Amount<Obligation.Terms<P>>
 
 ``Amount`` represents quantities as integers. For currencies the quantity represents pennies, cents or whatever
 else the smallest integer amount for that currency is. You cannot use ``Amount`` to represent negative quantities

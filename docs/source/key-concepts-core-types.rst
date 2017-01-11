@@ -1,7 +1,7 @@
 Core types
 ==========
 
-Corda provides a large standard library of data types used to represent the :doc:`data-model` previously described.
+Corda provides a large standard library of data types used to represent the :doc:`key-concepts-data-model` previously described.
 In addition, there are a series of helper libraries which provide date manipulation, maths and cryptography functions.
 
 State and References
@@ -43,7 +43,7 @@ Transaction lifecycle types
 ---------------------------
 
 The ``WireTransaction`` class contains the core of a transaction without signatures, and with references to attachments
-in place of the attachments themselves (see also :doc:`data-model`). Once signed these are encapsulated in the
+in place of the attachments themselves (see also :doc:`key-concepts-data-model`). Once signed these are encapsulated in the
 ``SignedTransaction`` class. For processing a transaction (i.e. to verify it) it is first converted to a
 ``LedgerTransaction``, which involves verifying the signatures and associating them to the relevant command(s), and
 resolving the attachment references to the attachments. Commands with valid signatures are encapsulated in the
@@ -54,7 +54,7 @@ resolving the attachment references to the attachments. Commands with valid sign
 
 When constructing a new transaction from scratch, you use ``TransactionBuilder``, which is a mutable transaction that
 can be signed once its construction is complete. This builder class should be used to create the initial transaction representation
-(before signature, before verification). It is intended to be passed around contracts that may edit it by adding new states/commands.
+(before signature, before verification). It is intended to be passed around code that may edit it by adding new states/commands.
 Then once the states and commands are right, this class can be used as a holding bucket to gather signatures from multiple parties.
 It is typical for contract classes to expose helper methods that can contribute to a ``TransactionBuilder``.
 
