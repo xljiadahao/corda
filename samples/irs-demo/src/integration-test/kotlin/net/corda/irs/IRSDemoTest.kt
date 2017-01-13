@@ -24,9 +24,16 @@ class IRSDemoTest : IntegrationTestCategory {
                     startNode("Bank A"),
                     startNode("Bank B")
             ).getOrThrow()
-            runUploadRates(controller.configuration.webAddress)
-            runTrade(nodeA.configuration.webAddress)
-            runDateChange(nodeB.configuration.webAddress)
+
+            val (controllerAddr, nodeAAddr, nodeBAddr) = Futures.allAsList(
+                    startWebserver(controller),
+                    startWebserver(nodeA),
+                    startWebserver(nodeB)
+            ).getOrThrow()
+
+            runUploadRates(controllerAddr)
+            runTrade(nodeAAddr)
+            runDateChange(nodeBAddr)
         }, useTestClock = true, isDebug = true)
     }
 }
