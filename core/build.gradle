@@ -1,4 +1,5 @@
 apply plugin: 'kotlin'
+apply plugin: 'kotlin-kapt'
 apply plugin: 'net.corda.plugins.quasar-utils'
 apply plugin: 'net.corda.plugins.publish-utils'
 
@@ -23,6 +24,11 @@ repositories {
 }
 
 sourceSets {
+    main {
+        kotlin {
+            srcDir "${buildDir}/generated/source/kapt/main/"
+        }
+    }
     test {
         resources {
             srcDir "../config/test"
@@ -30,7 +36,12 @@ sourceSets {
     }
 }
 
+kapt {
+    generateStubs = true
+}
+
 dependencies {
+
     testCompile "junit:junit:$junit_version"
     testCompile "commons-fileupload:commons-fileupload:1.3.2"
 
@@ -88,4 +99,8 @@ dependencies {
 
     // RS API: Response type and codes for ApiUtils.
     compile "javax.ws.rs:javax.ws.rs-api:2.0"
+
+    // requery
+    compile 'io.requery:requery-kotlin:1.1.0'
+//    kapt 'io.requery:requery-processor:1.1.0'
 }

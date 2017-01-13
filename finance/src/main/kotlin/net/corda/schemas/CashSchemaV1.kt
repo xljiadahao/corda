@@ -2,9 +2,7 @@ package net.corda.schemas
 
 import net.corda.core.schemas.MappedSchema
 import net.corda.core.schemas.PersistentState
-import javax.persistence.Column
-import javax.persistence.Entity
-import javax.persistence.Table
+import javax.persistence.*
 
 /**
  * An object used to fully qualify the [CashSchema] family name (i.e. independent of version).
@@ -18,6 +16,9 @@ object CashSchema
 object CashSchemaV1 : MappedSchema(schemaFamily = CashSchema.javaClass, version = 1, mappedTypes = listOf(PersistentCashState::class.java)) {
     @Entity
     @Table(name = "cash_states")
+    @NamedQueries(
+            NamedQuery(name="cash.findByCurrency", query="SELECT c FROM CashSchemaV1\$PersistentCashState c WHERE c.currency = ?1")
+    )
     class PersistentCashState(
             @Column(name = "owner_key")
             var owner: String,
@@ -33,5 +34,11 @@ object CashSchemaV1 : MappedSchema(schemaFamily = CashSchema.javaClass, version 
 
             @Column(name = "issuer_ref")
             var issuerRef: ByteArray
-    ) : PersistentState()
+    ) : PersistentState() {
+        /*
+         JPA Query requirement:
+         @Entity classes should have a default (non-arg) constructor to instantiate the objects when retrieving them from the database.
+        */
+        constructor() : this("", 0, "", "", ByteArray(0))
+    }
 }

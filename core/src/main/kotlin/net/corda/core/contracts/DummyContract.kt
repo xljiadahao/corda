@@ -9,7 +9,7 @@ import net.corda.core.transactions.TransactionBuilder
 
 val DUMMY_PROGRAM_ID = DummyContract()
 
-data class DummyContract(override val legalContractReference: SecureHash = SecureHash.sha256("")) : Contract {
+open class DummyContract(override val legalContractReference: SecureHash = SecureHash.sha256("")) : Contract {
 
     interface State : ContractState {
         val magicNumber: Int
