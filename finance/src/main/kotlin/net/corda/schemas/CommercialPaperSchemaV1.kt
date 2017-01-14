@@ -46,11 +46,5 @@ object CommercialPaperSchemaV1 : MappedSchema(schemaFamily = CommercialPaperSche
 
             @Column(name = "face_value_issuer_ref")
             var faceValueIssuerRef: ByteArray
-    ) : PersistentState() {
-        /*
-         JPA Query requirement:
-         @Entity classes should have a default (non-arg) constructor to instantiate the objects when retrieving them from the database.
-        */
-        constructor() : this("", ByteArray(0), "", Instant.now(), 0, "", "", ByteArray(0))
-    }
+    ) : PersistentState()
 }

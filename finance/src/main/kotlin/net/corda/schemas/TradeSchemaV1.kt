@@ -37,11 +37,5 @@ object TradeSchemaV1 : MappedSchema(schemaFamily = TradeSchema.javaClass, versio
         @Convert(InstantConverter::class)
         @Column(name = "tradeDate")
         var tradeDate: Instant
-    ) : PersistentState() {
-        /*
-         JPA Query requirement:
-         @Entity classes should have a default (non-arg) constructor to instantiate the objects when retrieving them from the database.
-        */
-        constructor() : this("", "", "", "", Instant.now())
-    }
+    ) : PersistentState()
 }

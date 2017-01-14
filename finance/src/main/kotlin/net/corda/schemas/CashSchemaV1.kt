@@ -34,11 +34,5 @@ object CashSchemaV1 : MappedSchema(schemaFamily = CashSchema.javaClass, version 
 
             @Column(name = "issuer_ref")
             var issuerRef: ByteArray
-    ) : PersistentState() {
-        /*
-         JPA Query requirement:
-         @Entity classes should have a default (non-arg) constructor to instantiate the objects when retrieving them from the database.
-        */
-        constructor() : this("", 0, "", "", ByteArray(0))
-    }
+    ) : PersistentState()
 }
